@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <title>xterm.js Fullscreen (jsDelivr)</title>
+    <style>
+        html, body {
+            margin: 0px;
+            padding-left: 4px;
+            width: 100%;
+            height: 100%;
+            background-color: #000;
+            overflow: hidden;
+        }
+        #terminal-container {
+            width: 100vw;
+            height: 100vh;
+        }
+        #fullscreen-btn {
+            position: fixed;
+            top: 10px;
+            right: 15px;
+            z-index: 10;
+            opacity: 0.7;
+            cursor: pointer;
+        }
+        #fullscreen-btn:hover {
+            opacity: 1;
+        }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/@xterm/xterm@6.0.0/lib/xterm.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@xterm/addon-fit@0.11.0/lib/addon-fit.min.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/@xterm/xterm@6.0.0/css/xterm.min.css" rel="stylesheet">
+</head>
+<body>
+<div id="terminal-container"></div>
+
+<script>
+    // Global classes exposed by the jsDelivr UMD scripts
+    window.term = new window.Terminal({
+        convertEol: true,
+        cursorBlink: true,
+        fontSize: 12,
+        theme: { background: '#000000' }
+    });
+    const fitAddon = new window.FitAddon.FitAddon();
+    term.loadAddon(fitAddon);
+
+    // Mount and fit to the full viewport
+    term.open(document.getElementById('terminal-container'));
+    fitAddon.fit();
+    term.writeln('xterm.js loaded via jsDelivr in full viewport.');
+
+    term.onData((data) => {
+        fly_DANGEROUS_APIS_BE_CAREFUL.termWrite(data); // or pty.write(data)
+    });
+
+    // Refit on window resize or fullscreen toggle
+    window.onresize = function () {
+        fitAddon.fit();
+        fly_DANGEROUS_APIS_BE_CAREFUL.termSize(term.cols,term.rows);
+    }
+
+    fly_DANGEROUS_APIS_BE_CAREFUL.termOpen();
+</script>
+</body>
+</html>

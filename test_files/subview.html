@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <script src="winbox.bundle.min.js"></script>
+        <style>
+            webframe {
+                display: flex;
+                width: 100%;
+                height: 100%;
+                flex: 1;
+                justify-content: center;
+                align-items: center;
+                text-align: center;
+                background: repeating-conic-gradient(
+                        white 0% 25%,
+                        lightgray 0% 50%
+                );
+                background-size: 50px 50px;
+                font-size: 40px;
+                font-family: monospace;
+                overflow: hidden;
+            }
+        </style>
+    </head>
+<body>
+    <button id="n">new</button>
+    <script>
+        const observedElements = new WeakSet();
+
+        function watchElementPosition(element, onMoveCallback) {
+            let lastX = null;
+            let lastY = null;
+            let animationFrameId = null;
+
+            function checkPosition() {
+                // Automatically stop the loop if the element is removed from the DOM
+                if (!document.body.contains(element)) {
+                    cancelAnimationFrame(animationFrameId);
+                    return;
+                }
+
+                const rect = element.getBoundingClientRect();
+
+                if (rect.left !== lastX || rect.top !== lastY) {
+                    lastX = rect.left;
+                    lastY = rect.top;
+                    onMoveCallback({ x: rect.left, y: rect.top });
+                }
+
+                animationFrameId = requestAnimationFrame(checkPosition);
+            }
+
+            checkPosition();
+        }
+
+        new MutationObserver((mutations, obs) => {
+            const target = document.querySelector('webframe');
+
+            // Only set up observers if target exists and isn't already being watched
+            if (target && !observedElements.has(target)) {
+                observedElements.add(target);
+                console.log('Element added:', target);
+
+                // 1. Watch for size changes
+                new ResizeObserver((entries) => {
+                    for (const entry of entries) {
+                        const { width, height } = entry.contentRect;
+                        console.log(`New size: ${width}px x ${height}px`);
+                    }
+                }).observe(target);
+
+                // 2. Watch for top-left position changes
+                watchElementPosition(target, ({ x, y }) => {
+                    target.textContent = "X: " + x + " Y: " + y;
+                });
+            }
+        }).observe(document.body, {
+            childList: true, // Watch for direct children being added/removed
+            subtree: true    // Watch all descendants, not just direct children
+        });
+    </script>
+    <script>
+      document.getElementById("n").onclick = function () {
+        new WinBox("Custom Root", {
+          html: "<webframe></webframe>"
+        });
+      }
+    </script>
+</body>
+</html>
