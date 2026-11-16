@@ -28,6 +28,7 @@ namespace fs = std::filesystem;
 
 void info() {
     std::cout << "flycompact: The DRAGONFLY multi-call binary!\n"
+                "(copyright) ckwastaken 2026\n\n"
                 "included in multi-call binary provides:\n"
                 "gui: Starts the user interface\n"
                 "clean: Cleans cache.. (/tmp/cache)\n"
