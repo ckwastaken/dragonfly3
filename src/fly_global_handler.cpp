@@ -103,15 +103,6 @@ void fly::OnAfterCreated(CefRefPtr<CefBrowser> browser) {
     OverrideUserAgentAndHints(browser);
 }
 
-void fly::OnBeforeClose(CefRefPtr<CefBrowser> browser) {
-    CEF_REQUIRE_UI_THREAD();
-    browser_ = nullptr;
-
-    exit(1);
-    // Quit the CEF message loop when the main window closes
-    CefQuitMessageLoop();
-}
-
 void fly::OnLoadStart(CefRefPtr<CefBrowser> browser, CefRefPtr<CefFrame> frame, TransitionType transition_type) {
     CEF_REQUIRE_UI_THREAD();
 

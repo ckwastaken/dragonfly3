@@ -82,7 +82,23 @@ public:
     // Lifecycle & Load methods
     void OnAfterCreated(CefRefPtr<CefBrowser> browser) override;
 
-    void OnBeforeClose(CefRefPtr<CefBrowser> browser) override;
+
+    // This is a problem area someone will need to fix later (probably jerry)
+
+    CefRefPtr<CefLifeSpanHandler> GetLifeSpanHandler() override {
+        return this;
+    }
+
+    bool DoClose(CefRefPtr<CefBrowser> browser) override {
+        return false;
+    }
+
+    void OnBeforeClose(CefRefPtr<CefBrowser> browser) override {
+        CefQuitMessageLoop();
+    }
+
+    // Problem area end
+
     void OnLoadStart(CefRefPtr<CefBrowser> browser, CefRefPtr<CefFrame> frame, TransitionType transition_type) override;
 
     // Resource Request method
