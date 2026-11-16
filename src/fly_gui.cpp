@@ -11,6 +11,7 @@
 #include <thread>
 
 #include "salt.h"
+#include <unistd.h>
 CefRefPtr<CefBrowser> g_browser;
 
 void load(const std::string& url) {
@@ -56,7 +57,7 @@ public:
         CefString(&browser_settings.sans_serif_font_family) = font;
         CefString(&browser_settings.serif_font_family) = font;
 
-        const std::string url = "file:/home/mizhan/cfly/test_files/";// + salt::shake();
+        const std::string url = "file:" + std::filesystem::current_path().string() + "/../test_files/";
 
         CefWindowInfo window_info;
         window_info.runtime_style = CEF_RUNTIME_STYLE_ALLOY;
