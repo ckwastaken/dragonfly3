@@ -1,7 +1,16 @@
 <img width=300 src="icon.svg"></img>
 ## build instructions
-download CEF 156 for linux \
-place it in `third_party/cef_156`
+Before building you will need a SPEFIC CEF VERSION \
+The CEF version you need to download is ***156*** or newer \
+\
+For x64 -> 
+https://cef-builds.spotifycdn.com/cef_binary_156.0.30%2Bg6028375%2Bchromium-156.0.8078.96_linux64.tar.bz2 \
+For ARM64 ->
+https://cef-builds.spotifycdn.com/cef_binary_156.0.30%2Bg6028375%2Bchromium-156.0.8078.96_linuxarm64.tar.bz2 \
+place it in `third_party/cef_156` \
+\
+You will also need Louvre 2.18.1 which can be obtained using dnf or here: \
+https://github.com/CuarzoSoftware/Louvre
 ### note
 after building push it to your device \
 you will need to bring your own \

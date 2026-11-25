@@ -18,6 +18,8 @@
 #include "include/cef_path_util.h"
 #include "include/internal/cef_types.h"
 #include <cstdlib>
+#include "twlconnector.h"
+
 #include <string>
 
 void AddCefExeDirToPath() {

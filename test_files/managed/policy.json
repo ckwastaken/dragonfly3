@@ -1,0 +1,35 @@
+{
+  "3rdparty": {
+    "extensions": {
+      "ddkjiahejlhfcafbddmgiahcphecmpfh": {
+        "defaultFiltering": "complete"
+      }
+    }
+  },
+  "AlternateErrorPagesEnabled": false,
+  "AutofillAddressEnabled": false,
+  "AutofillCreditCardEnabled": false,
+  "BackgroundModeEnabled": false,
+  "BlockThirdPartyCookies": true,
+  "BrowserAddPersonEnabled": false,
+  "BrowserSignin": 0,
+  "BrowserThemeColor": "#c9c9c9",
+  "DnsOverHttpsMode": "off",
+  "DownloadRestrictions": 3,
+  "EnableDoNotTrack": true,
+  "ExtensionInstallForcelist": [
+    "ddkjiahejlhfcafbddmgiahcphecmpfh"
+  ],
+  "MetricsReportingEnabled": false,
+  "NetworkPredictionOptions": 2,
+  "PasswordManagerEnabled": false,
+  "PrivacySandboxAdMeasurementEnabled": false,
+  "PrivacySandboxAdTopicsEnabled": false,
+  "PrivacySandboxPromptEnabled": false,
+  "PrivacySandboxSiteEnabledAdsEnabled": false,
+  "SearchSuggestEnabled": false,
+  "SpellCheckServiceEnabled": false,
+  "SyncDisabled": true,
+  "UrlKeyedAnonymizedDataCollectionEnabled": false,
+  "WebAppInstallByUserEnabled": false
+}

@@ -42,7 +42,7 @@ public:
         command_line->AppendSwitch("force-devtools-available");
         //command_line->AppendSwitch("kiosk");
         command_line->AppendSwitchWithValue("force-device-scale-factor","1");
-        //command_line->AppendSwitchWithValue("ozone-platform", "wayland");
+        command_line->AppendSwitchWithValue("ozone-platform", "wayland");
         command_line->AppendSwitchWithValue("apps-gallery-url", configs::galleryat);
     }
 
@@ -60,7 +60,7 @@ public:
         const std::string url = "file:" + std::filesystem::current_path().string() + "/../test_files/";
 
         CefWindowInfo window_info;
-        window_info.runtime_style = CEF_RUNTIME_STYLE_ALLOY;
+        //window_info.runtime_style = CEF_RUNTIME_STYLE_ALLOY;
         window_info.bounds = CefRect(0, 0, 414, 848);
         CefString(&window_info.window_name) = "virtual device - " +
             configs::make + " " + configs::model
@@ -92,6 +92,7 @@ int startux(int argc, char* argv[]) {
     }
 
     CefSettings settings;
+    CefString(&settings.chrome_policy_id) = std::filesystem::current_path().string();
     CefString(&settings.root_cache_path) = cache_dir;
     settings.no_sandbox = false; // true is bad for security but useful during testing
 
