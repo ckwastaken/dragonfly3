@@ -27,11 +27,14 @@
 #include <wlr/backend/wayland.h>
 
 #include <xkbcommon/xkbcommon.h>
+#include <xkbcommon/xkbcommon-keysyms.h>
 
 #include "twlconnector.h"
 
 #include <pthread.h>
 #include <string.h>
+
+bool video = true;
 
 static pthread_mutex_t twl_ready_mutex = PTHREAD_MUTEX_INITIALIZER;
 static pthread_cond_t  twl_ready_cond  = PTHREAD_COND_INITIALIZER;
@@ -238,14 +241,34 @@ static bool handle_keybinding(struct tinywl_server *server, xkb_keysym_t sym) {
 	return true;
 }
 
+static void toggle_outputs(struct tinywl_server *server) {
+	video = !video;
+
+	struct tinywl_output *output;
+	wl_list_for_each(output, &server->outputs, link) {
+		struct wlr_output_state state;
+		wlr_output_state_init(&state);
+		wlr_output_state_set_enabled(&state, video);
+		wlr_output_commit_state(output->wlr_output, &state);
+		wlr_output_state_finish(&state);
+	}
+}
+
+
 static void keyboard_handle_key(
-		struct wl_listener *listener, void *data) {
+	struct wl_listener *listener, void *data) {
 	/* This event is raised when a key is pressed or released. */
-	struct tinywl_keyboard *keyboard =
-		wl_container_of(listener, keyboard, key);
+	struct tinywl_keyboard *keyboard = wl_container_of(listener, keyboard, key);
 	struct tinywl_server *server = keyboard->server;
 	struct wlr_keyboard_key_event *event = data;
 	struct wlr_seat *seat = server->seat;
+
+
+	// power button logic
+
+	if (event->state != WL_KEYBOARD_KEY_STATE_PRESSED) {
+		return;
+	}
 
 	/* Translate libinput keycode -> xkbcommon */
 	uint32_t keycode = event->keycode + 8;
@@ -253,6 +276,20 @@ static void keyboard_handle_key(
 	const xkb_keysym_t *syms;
 	int nsyms = xkb_state_key_get_syms(
 			keyboard->wlr_keyboard->xkb_state, keycode, &syms);
+
+	for (int i = 0; i < nsyms; i++) {
+		if (syms[i] == XKB_KEY_XF86PowerOff) {
+			toggle_outputs(keyboard->server);
+			return;
+		}
+	}
+
+	// Drop regular keys while screen is off so accidental keypresses don't hit hidden windows
+	if (!video) {
+		return;
+	}
+
+	// else
 
 	bool handled = false;
 	uint32_t modifiers = wlr_keyboard_get_modifiers(keyboard->wlr_keyboard);
@@ -611,6 +648,11 @@ static void server_cursor_frame(struct wl_listener *listener, void *data) {
 }
 
 static void output_frame(struct wl_listener *listener, void *data) {
+
+	if (video == false) {
+		return;
+	}
+
 	/* This function is called every time an output is ready to display a frame,
 	 * generally at the output's refresh rate (e.g. 60Hz). */
 	struct tinywl_output *output = wl_container_of(listener, output, frame);
