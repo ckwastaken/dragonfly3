@@ -255,36 +255,31 @@ static void toggle_outputs(struct tinywl_server *server) {
 }
 
 
-static void keyboard_handle_key(
-	struct wl_listener *listener, void *data) {
+static void keyboard_handle_key(struct wl_listener *listener, void *data) {
+
+
 	/* This event is raised when a key is pressed or released. */
 	struct tinywl_keyboard *keyboard = wl_container_of(listener, keyboard, key);
 	struct tinywl_server *server = keyboard->server;
 	struct wlr_keyboard_key_event *event = data;
 	struct wlr_seat *seat = server->seat;
-
-
-	// power button logic
-
-	if (event->state != WL_KEYBOARD_KEY_STATE_PRESSED) {
-		return;
-	}
-
-	/* Translate libinput keycode -> xkbcommon */
 	uint32_t keycode = event->keycode + 8;
-	/* Get a list of keysyms based on the keymap for this keyboard */
-	const xkb_keysym_t *syms;
-	int nsyms = xkb_state_key_get_syms(
-			keyboard->wlr_keyboard->xkb_state, keycode, &syms);
+	uint32_t modifiers = wlr_keyboard_get_modifiers(keyboard->wlr_keyboard);
 
-	for (int i = 0; i < nsyms; i++) {
-		if (syms[i] == XKB_KEY_XF86PowerOff) {
-			toggle_outputs(keyboard->server);
-			return;
+	const xkb_keysym_t *syms;
+	int nsyms = xkb_state_key_get_syms(keyboard->wlr_keyboard->xkb_state, keycode, &syms);
+
+	if (event->state == WL_KEYBOARD_KEY_STATE_PRESSED) {
+		for (int i = 0; i < nsyms; i++) {
+			if (syms[i] == XKB_KEY_XF86PowerOff) {
+
+				toggle_outputs(keyboard->server);
+				return;
+			}
 		}
 	}
 
-	// Drop regular keys while screen is off so accidental keypresses don't hit hidden windows
+	// Drop keys while screen is off so accidental keypresses don't hit hidden windows
 	if (!video) {
 		return;
 	}
@@ -292,7 +287,7 @@ static void keyboard_handle_key(
 	// else
 
 	bool handled = false;
-	uint32_t modifiers = wlr_keyboard_get_modifiers(keyboard->wlr_keyboard);
+
 	if ((modifiers & WLR_MODIFIER_ALT) &&
 			event->state == WL_KEYBOARD_KEY_STATE_PRESSED) {
 		/* If alt is held down and this button was _pressed_, we attempt to
