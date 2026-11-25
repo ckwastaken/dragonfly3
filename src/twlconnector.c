@@ -110,6 +110,7 @@ struct tinywl_output {
 	struct wl_list link;
 	struct tinywl_server *server;
 	struct wlr_output *wlr_output;
+	struct wlr_scene_rect *bg_rect;
 	struct wl_listener frame;
 	struct wl_listener request_state;
 	struct wl_listener destroy;
@@ -128,6 +129,9 @@ struct tinywl_toplevel {
 	struct wl_listener request_resize;
 	struct wl_listener request_maximize;
 	struct wl_listener request_fullscreen;
+	bool maximized;
+	bool fullscreen;
+	struct wlr_box saved_geometry;
 };
 
 struct tinywl_popup {
@@ -681,6 +685,12 @@ static void server_new_output(struct wl_listener *listener, void *data) {
 	output->wlr_output = wlr_output;
 	output->server = server;
 
+
+	float bg_color[4] = {0.5f, 0.3f, 0.3f, 1.0f};
+	output->bg_rect = wlr_scene_rect_create(&server->scene->tree,
+		wlr_output->width, wlr_output->height, bg_color);
+
+
 	/* Sets up a listener for the frame event. */
 	output->frame.notify = output_frame;
 	wl_signal_add(&wlr_output->events.frame, &output->frame);
@@ -814,31 +824,84 @@ static void xdg_toplevel_request_resize(
 	begin_interactive(toplevel, TINYWL_CURSOR_RESIZE, event->edges);
 }
 
-static void xdg_toplevel_request_maximize(
-		struct wl_listener *listener, void *data) {
-	/* This event is raised when a client would like to maximize itself,
-	 * typically because the user clicked on the maximize button on client-side
-	 * decorations. tinywl doesn't support maximization, but to conform to
-	 * xdg-shell protocol we still must send a configure.
-	 * wlr_xdg_surface_schedule_configure() is used to send an empty reply.
-	 * However, if the request was sent before an initial commit, we don't do
-	 * anything and let the client finish the initial surface setup. */
-	struct tinywl_toplevel *toplevel =
-		wl_container_of(listener, toplevel, request_maximize);
-	if (toplevel->xdg_toplevel->base->initialized) {
-		wlr_xdg_surface_schedule_configure(toplevel->xdg_toplevel->base);
+static void xdg_toplevel_request_maximize(struct wl_listener *listener, void *data) {
+	struct tinywl_toplevel *toplevel = wl_container_of(listener, toplevel, request_maximize);
+	struct wlr_xdg_toplevel *xdg_toplevel = toplevel->xdg_toplevel;
+
+	if (!xdg_toplevel->base->initialized) {
+		return;
+	}
+
+	bool maximize = xdg_toplevel->requested.maximized;
+	wlr_xdg_toplevel_set_maximized(xdg_toplevel, maximize);
+
+	if (maximize) {
+		// Save current position and size
+		toplevel->saved_geometry.x = toplevel->scene_tree->node.x;
+		toplevel->saved_geometry.y = toplevel->scene_tree->node.y;
+		toplevel->saved_geometry.width = xdg_toplevel->current.width;
+		toplevel->saved_geometry.height = xdg_toplevel->current.height;
+
+		// Get active output bounds and resize Chromium to fill it
+		struct wlr_output *output = wlr_output_layout_output_at(
+			toplevel->server->output_layout,
+			toplevel->scene_tree->node.x,
+			toplevel->scene_tree->node.y);
+		if (output) {
+			struct wlr_box output_box;
+			wlr_output_layout_get_box(toplevel->server->output_layout, output, &output_box);
+			wlr_scene_node_set_position(&toplevel->scene_tree->node, output_box.x, output_box.y);
+			wlr_xdg_toplevel_set_size(xdg_toplevel, output_box.width, output_box.height);
+		}
+	} else {
+		// Restore previous geometry
+		wlr_scene_node_set_position(&toplevel->scene_tree->node,
+			toplevel->saved_geometry.x, toplevel->saved_geometry.y);
+		wlr_xdg_toplevel_set_size(xdg_toplevel,
+			toplevel->saved_geometry.width, toplevel->saved_geometry.height);
 	}
 }
 
-static void xdg_toplevel_request_fullscreen(
-		struct wl_listener *listener, void *data) {
-	/* Just as with request_maximize, we must send a configure here. */
-	struct tinywl_toplevel *toplevel =
-		wl_container_of(listener, toplevel, request_fullscreen);
-	if (toplevel->xdg_toplevel->base->initialized) {
-		wlr_xdg_surface_schedule_configure(toplevel->xdg_toplevel->base);
+
+static void xdg_toplevel_request_fullscreen(struct wl_listener *listener, void *data) {
+	struct tinywl_toplevel *toplevel = wl_container_of(listener, toplevel, request_fullscreen);
+	struct wlr_xdg_toplevel *xdg_toplevel = toplevel->xdg_toplevel;
+
+	if (!xdg_toplevel->base->initialized) {
+		return;
+	}
+
+	bool fullscreen = xdg_toplevel->requested.fullscreen;
+	wlr_xdg_toplevel_set_fullscreen(xdg_toplevel, fullscreen);
+
+	if (fullscreen) {
+		toplevel->saved_geometry.x = toplevel->scene_tree->node.x;
+		toplevel->saved_geometry.y = toplevel->scene_tree->node.y;
+		toplevel->saved_geometry.width = xdg_toplevel->current.width;
+		toplevel->saved_geometry.height = xdg_toplevel->current.height;
+
+		struct wlr_output *output = xdg_toplevel->requested.fullscreen_output;
+		if (!output) {
+			output = wlr_output_layout_output_at(
+				toplevel->server->output_layout,
+				toplevel->scene_tree->node.x,
+				toplevel->scene_tree->node.y);
+		}
+		if (output) {
+			struct wlr_box output_box;
+			wlr_output_layout_get_box(toplevel->server->output_layout, output, &output_box);
+			wlr_scene_node_set_position(&toplevel->scene_tree->node, output_box.x, output_box.y);
+			wlr_xdg_toplevel_set_size(xdg_toplevel, output_box.width, output_box.height);
+			wlr_scene_node_raise_to_top(&toplevel->scene_tree->node);
+		}
+	} else {
+		wlr_scene_node_set_position(&toplevel->scene_tree->node,
+			toplevel->saved_geometry.x, toplevel->saved_geometry.y);
+		wlr_xdg_toplevel_set_size(xdg_toplevel,
+			toplevel->saved_geometry.width, toplevel->saved_geometry.height);
 	}
 }
+
 
 static void server_new_xdg_toplevel(struct wl_listener *listener, void *data) {
 	/* This event is raised when a client creates a new toplevel (application window). */
@@ -870,8 +933,11 @@ static void server_new_xdg_toplevel(struct wl_listener *listener, void *data) {
 	wl_signal_add(&xdg_toplevel->events.request_move, &toplevel->request_move);
 	toplevel->request_resize.notify = xdg_toplevel_request_resize;
 	wl_signal_add(&xdg_toplevel->events.request_resize, &toplevel->request_resize);
+
+
 	toplevel->request_maximize.notify = xdg_toplevel_request_maximize;
 	wl_signal_add(&xdg_toplevel->events.request_maximize, &toplevel->request_maximize);
+
 	toplevel->request_fullscreen.notify = xdg_toplevel_request_fullscreen;
 	wl_signal_add(&xdg_toplevel->events.request_fullscreen, &toplevel->request_fullscreen);
 }
@@ -915,6 +981,7 @@ static void server_new_xdg_popup(struct wl_listener *listener, void *data) {
 	struct wlr_xdg_surface *parent = wlr_xdg_surface_try_from_wlr_surface(xdg_popup->parent);
 	assert(parent != NULL);
 	struct wlr_scene_tree *parent_tree = parent->data;
+
 	xdg_popup->base->data = wlr_scene_xdg_surface_create(parent_tree, xdg_popup->base);
 
 	popup->commit.notify = xdg_popup_commit;

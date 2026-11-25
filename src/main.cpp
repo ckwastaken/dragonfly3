@@ -4,11 +4,10 @@ void info() {
     std::cout << "flycompact: The DRAGONFLY multi-call binary!\n"
                 "(copyright) ckwastaken 2026\n\n"
                 "included in multi-call binary provides:\n"
-                "gui: Starts the user interface + compositor\n"
+                "gui: Starts flygui + compositor.. do not run inside of itself\n"
                 "clean: Cleans cache.. (/tmp/cache)\n"
                 "license: Shows the license\n"
-                "help: Shows this menu\n"
-                "\nstring start with '-' assumed to be the gui command\n\n";
+                "help: Shows this menu\n";
     exit(1);
 }
 
@@ -41,11 +40,19 @@ void readInputWorker() {
 }
 
 int main(int argc, char* argv[]) {
+    const char* isfly = std::getenv("IS_FLY");
+
     if (argc < 2) info();
 
     std::string applet = argv[1];
 
     if (applet == "gui") {
+        if (isfly && std::string(isfly) == "yes") {
+            std::cout << "\033[41mWARNING!!!\033[0m\n";
+            std::cout << "\033[41mdo NOT run flygui inside of itself!\033[0m\n";
+            exit(1);
+        }
+
         std::thread inputThread(readInputWorker);
         inputThread.detach();
 
@@ -64,6 +71,9 @@ int main(int argc, char* argv[]) {
 
             // Point flycompact / CEF to TinyWL's Wayland socket
             setenv("WAYLAND_DISPLAY", wayland_display, 1);
+            setenv("XDG_CURRENT_DESKTOP", "MyCompositor", 1);
+            setenv("XDG_SESSION_TYPE", "wayland", 1);
+            setenv("IS_FLY", "yes", 1);
 
             startux(0, nullptr);
 
@@ -72,7 +82,7 @@ int main(int argc, char* argv[]) {
         }
     }
 
-    if (applet.starts_with('-')) {
+    if (applet.starts_with("--")) {
         exit(startux(argc, argv));
     }
 
