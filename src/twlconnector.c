@@ -271,7 +271,7 @@ static void keyboard_handle_key(struct wl_listener *listener, void *data) {
 
 	if (event->state == WL_KEYBOARD_KEY_STATE_PRESSED) {
 		for (int i = 0; i < nsyms; i++) {
-			if (syms[i] == XKB_KEY_XF86PowerOff) {
+			if (syms[i] == XKB_KEY_XF86PowerOff) { // sleep
 
 				toggle_outputs(keyboard->server);
 				return;
