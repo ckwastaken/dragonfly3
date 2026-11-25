@@ -2,11 +2,10 @@ project(
     'flycompact',
     ['c', 'cpp'],
     default_options: [
-        'cpp_std=c++20',
         'cpp_std=gnu++20',
         'c_std=c11',
         'warning_level=1',
-    ]
+    ],
 )
 
 add_project_arguments(
@@ -20,7 +19,8 @@ add_project_arguments(
 # Paths
 # --------------------------------------------------
 
-cef_root = meson.current_source_dir() / 'third_party/cef_156'
+cef_rel_root = 'third_party/cef_156'
+cef_root = meson.current_source_dir() / cef_rel_root
 cef_release = cef_root / 'Release'
 cef_resources = cef_root / 'Resources'
 
@@ -34,31 +34,75 @@ cef_deps = [
     dependency('threads'),
     dependency('x11'),
     dependency('xft'),
-    dependency('freetype2')
+    dependency('freetype2'),
 ]
 
 cef_inc = include_directories(
-    'third_party/cef_156',
-    'third_party/cef_156/include',
-    'third_party/cef_156/libcef_dll',
+    cef_rel_root,
+    cef_rel_root / 'include',
+    cef_rel_root / 'libcef_dll',
 )
 
 # --------------------------------------------------
-# CEF library
+# CEF prebuilt shared library (libcef.so)
 # --------------------------------------------------
 
 cef_lib = cpp.find_library(
     'cef',
-    dirs: cef_release,
+    dirs: [cef_release],
     required: true,
 )
 
 # --------------------------------------------------
-# CEF DLL wrapper
+# CEF DLL wrapper (built from source by Meson)
 # --------------------------------------------------
 
-cef_wrapper = cef_root / '../libcef_dll_wrapper.a'
-cef_wrapper_path = cef_root / '../libcef_dll_wrapper.a'
+py_script = '''
+import re, sys
+cmake_path, cef_rel_root = sys.argv[1], sys.argv[2]
+content = open(cmake_path, encoding='utf-8').read()
+
+wanted = [
+    'LIBCEF_SRCS', 'LIBCEF_SRCS_LINUX',
+    'LIBCEF_BASE_SRCS',
+    'LIBCEF_CPPTOC_SRCS', 'LIBCEF_CPPTOC_SRCS_LINUX',
+    'LIBCEF_CTOCPP_SRCS', 'LIBCEF_CTOCPP_SRCS_LINUX',
+    'LIBCEF_WRAPPER_SRCS', 'LIBCEF_WRAPPER_SRCS_LINUX',
+]
+
+sources = []
+for block in wanted:
+    m = re.search(r'set\s*\(\s*' + block + r'\b(.*?)\)', content, re.DOTALL)
+    if m:
+        for token in m.group(1).split():
+            if token.endswith(('.cc', '.cpp', '.c')):
+                sources.append(f'{cef_rel_root}/libcef_dll/{token}')
+
+print(';'.join(sources))
+'''
+
+res = run_command(
+    'python3',
+    '-c',
+    py_script,
+    cef_root / 'libcef_dll' / 'CMakeLists.txt',
+    cef_rel_root,
+    check: true,
+)
+
+cef_wrapper_sources = files(res.stdout().strip().split(';'))
+
+libcef_dll_wrapper = static_library(
+    'cef_dll_wrapper',
+    cef_wrapper_sources,
+    include_directories: cef_inc,
+    cpp_args: [
+        '-DWRAPPING_CEF_SHARED',
+        '-Wno-attributes',
+        '-Wno-deprecated-declarations',
+        '-Wno-unused-parameter',
+    ],
+)
 
 # --------------------------------------------------
 # salt
@@ -92,7 +136,7 @@ twlconnector = shared_library(
 )
 
 # --------------------------------------------------
-# Main executable
+# Copy CEF runtime files
 # --------------------------------------------------
 
 copy_cef = custom_target(
@@ -101,7 +145,7 @@ copy_cef = custom_target(
     command: [
         'bash',
         '-c',
-        'mkdir -p "$1" && cp -r "$2"/* "$1"/ && cp -r "$3"/* "$1"/ && touch "$4"',
+        'mkdir -p "$1" && cp -r "$2"/. "$1"/ && cp -r "$3"/. "$1"/ && touch "$4"',
         'copy-cef',
         meson.current_build_dir(),
         cef_release,
@@ -111,10 +155,26 @@ copy_cef = custom_target(
     build_by_default: true,
 )
 
+run_target(
+    'copy-cef-manual',
+    command: [
+        'bash',
+        '-c',
+        'mkdir -p "$1" && cp -r "$2"/. "$1"/ && cp -r "$3"/. "$1"/',
+        'copy-cef-manual',
+        meson.current_build_dir(),
+        cef_release,
+        cef_resources,
+    ],
+)
+
+# --------------------------------------------------
+# Main executable
+# --------------------------------------------------
+
 flycompact = executable(
     'flycompact',
     copy_cef,
-
     sources: [
         'src/main.cpp',
         'src/fly_gui.cpp',
@@ -128,45 +188,17 @@ flycompact = executable(
         'src/fly_processmessage.cpp',
         'src/keybinds.cpp',
     ],
-
     include_directories: [
         cef_inc,
-        include_directories(
-            '/usr/include/freetype2',
-            '/usr/include/X11',
-        ),
     ],
-
     link_with: [
+        libcef_dll_wrapper,
         salt,
         twlconnector,
     ],
-
-    dependencies: cef_deps,
-
+    dependencies: [cef_lib] + cef_deps,
     link_args: [
-        cef_wrapper_path,
-        '-L' + cef_release,
-        '-lcef',
         '-Wl,-rpath,$ORIGIN',
     ],
-
     install: false,
-)
-
-# --------------------------------------------------
-# Copy CEF runtime files
-# --------------------------------------------------
-
-run_target(
-    'copy-cef',
-    command: [
-        'bash',
-        '-c',
-        'mkdir -p "$1" && cp -a "$2"/. "$1"/ && cp -a "$3"/. "$1"/',
-        'copy-cef',
-        meson.current_build_dir(),
-        cef_release,
-        cef_resources,
-    ],
 )
