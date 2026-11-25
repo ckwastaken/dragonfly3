@@ -19,7 +19,9 @@ add_project_arguments(
 # Paths
 # --------------------------------------------------
 
-#cef_rel_root = 'third_party/cef_156'
+# cef_rel_root = 'third_party/cef_156'
+# moved to opt to not have to redownload often
+
 cef_rel_root = '/opt/cef_156'
 
 cef_root = meson.current_source_dir() / cef_rel_root
