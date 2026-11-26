@@ -12,7 +12,7 @@
         </option>
         <option name="profiles">
           <MesonProfile>
-            <option name="buildDir" value="/tmp" />
+            <option name="buildDir" value="/tmpx" />
           </MesonProfile>
         </option>
       </MesonProjectSettings>

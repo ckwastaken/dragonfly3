@@ -13,7 +13,7 @@
   "BlockThirdPartyCookies": true,
   "BrowserAddPersonEnabled": false,
   "BrowserSignin": 0,
-  "BrowserThemeColor": "#c9c9c9",
+  "BrowserThemeColor": "#000000",
   "DnsOverHttpsMode": "off",
   "DownloadRestrictions": 3,
   "EnableDoNotTrack": true,

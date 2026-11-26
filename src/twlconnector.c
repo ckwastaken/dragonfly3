@@ -34,6 +34,46 @@
 #include <pthread.h>
 #include <string.h>
 
+#include <stdlib.h>
+#include <drm_fourcc.h>
+#include <wlr/interfaces/wlr_buffer.h>
+#include <wlr/types/wlr_cursor.h>
+#include "cursor.h"
+
+struct static_cursor_buffer {
+	struct wlr_buffer base;
+};
+
+static void static_buf_destroy(struct wlr_buffer *wlr_buf) {
+	struct static_cursor_buffer *buf = wl_container_of(wlr_buf, buf, base);
+	free(buf);
+}
+
+static bool static_buf_begin_data_ptr_access(struct wlr_buffer *wlr_buf,
+		uint32_t flags, void **data, uint32_t *format, size_t *stride) {
+	if (flags & WLR_BUFFER_DATA_PTR_ACCESS_WRITE) {
+		return false;
+	}
+	*data = (void *)cursor_argb8888_data;
+	*format = DRM_FORMAT_ARGB8888;
+	*stride = CURSOR_STRIDE;
+	return true;
+}
+
+static void static_buf_end_data_ptr_access(struct wlr_buffer *wlr_buf) {}
+
+static const struct wlr_buffer_impl static_buf_impl = {
+	.destroy = static_buf_destroy,
+	.begin_data_ptr_access = static_buf_begin_data_ptr_access,
+	.end_data_ptr_access = static_buf_end_data_ptr_access,
+};
+
+struct wlr_buffer *create_embedded_cursor_buffer(void) {
+	struct static_cursor_buffer *buf = calloc(1, sizeof(*buf));
+	wlr_buffer_init(&buf->base, &static_buf_impl, CURSOR_WIDTH, CURSOR_HEIGHT);
+	return &buf->base;
+}
+
 bool video = true;
 
 static pthread_mutex_t twl_ready_mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -401,8 +441,7 @@ static void seat_request_cursor(struct wl_listener *listener, void *data) {
 		 * provided surface as the cursor image. It will set the hardware cursor
 		 * on the output that it's currently on and continue to do so as the
 		 * cursor moves between outputs. */
-		wlr_cursor_set_surface(server->cursor, event->surface,
-				event->hotspot_x, event->hotspot_y);
+		//wlr_cursor_set_surface(server->cursor, event->surface, event->hotspot_x, event->hotspot_y);
 	}
 }
 
@@ -414,7 +453,7 @@ static void seat_pointer_focus_change(struct wl_listener *listener, void *data) 
 	 * is NULL */
 	struct wlr_seat_pointer_focus_change_event *event = data;
 	if (event->new_surface == NULL) {
-		wlr_cursor_set_xcursor(server->cursor, server->cursor_mgr, "default");
+		//wlr_cursor_set_xcursor(server->cursor, server->cursor_mgr, "default");
 	}
 }
 
@@ -542,7 +581,7 @@ static void process_cursor_motion(struct tinywl_server *server, uint32_t time) {
 		/* If there's no toplevel under the cursor, set the cursor image to a
 		 * default. This is what makes the cursor image appear when you move it
 		 * around the screen, not over any toplevels. */
-		wlr_cursor_set_xcursor(server->cursor, server->cursor_mgr, "default");
+		//wlr_cursor_set_xcursor(server->cursor, server->cursor_mgr, "default");
 	}
 	if (surface) {
 		/*
@@ -1029,7 +1068,7 @@ static void server_new_xdg_popup(struct wl_listener *listener, void *data) {
 }
 
 int wayland_main(int argc, char *argv[]) {
-	wlr_log_init(WLR_DEBUG, NULL);
+	wlr_log_init(WLR_ERROR, NULL);
 	char *startup_cmd = NULL;
 
 	int c;
@@ -1137,7 +1176,8 @@ int wayland_main(int argc, char *argv[]) {
 	 * Xcursor themes to source cursor images from and makes sure that cursor
 	 * images are available at all scale factors on the screen (necessary for
 	 * HiDPI support). */
-	server.cursor_mgr = wlr_xcursor_manager_create(NULL, 24);
+	//server.cursor_mgr = wlr_xcursor_manager_create(NULL, 24);
+	wlr_cursor_set_buffer(server.cursor, create_embedded_cursor_buffer(), 0, 0, 1.0f);
 
 	/*
 	 * wlr_cursor *only* displays an image on screen. It does not move around

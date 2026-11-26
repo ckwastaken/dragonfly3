@@ -176,6 +176,27 @@ run_target(
 # Main executable
 # --------------------------------------------------
 
+fly_task_manager = shared_library(
+    'ftm',
+    sources: [
+        'src/fly_task_manager.cpp',
+        'src/fly_task_manager.h',
+    ],
+    include_directories: [
+        cef_inc,
+    ],
+    link_with: [
+        libcef_dll_wrapper,
+        salt,
+        twlconnector,
+    ],
+    dependencies: [cef_lib] + cef_deps,
+    link_args: [
+        '-Wl,-rpath,$ORIGIN',
+    ],
+    install: false,
+)
+
 flycompact = executable(
     'flycompact',
     copy_cef,
@@ -196,6 +217,7 @@ flycompact = executable(
         cef_inc,
     ],
     link_with: [
+        fly_task_manager,
         libcef_dll_wrapper,
         salt,
         twlconnector,

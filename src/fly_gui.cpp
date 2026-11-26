@@ -7,6 +7,7 @@
 #include "include/wrapper/cef_helpers.h"
 
 #include "fly_gui.h"
+#include "fly_task_manager.h"
 
 #include <thread>
 
@@ -37,7 +38,7 @@ public:
         CefRefPtr<CefCommandLine> command_line) override {
         command_line->AppendSwitchWithValue("enable-features", "OverlayScrollbar");
         command_line->AppendSwitchWithValue("disable-features", "GtkUi");
-        command_line->AppendSwitch("force-light-mode");
+        command_line->AppendSwitch("force-dark-mode");
         command_line->AppendSwitch("enable-do-not-track");
         command_line->AppendSwitch("force-devtools-available");
         //command_line->AppendSwitch("kiosk");
@@ -50,6 +51,7 @@ public:
         CEF_REQUIRE_UI_THREAD();
 
         CefRefPtr<fly> client(new fly());
+
         CefBrowserSettings browser_settings;
 
         const std::string font = "Nimbus Sans";
@@ -57,19 +59,8 @@ public:
         CefString(&browser_settings.sans_serif_font_family) = font;
         CefString(&browser_settings.serif_font_family) = font;
 
-        const std::string url = "file:" + std::filesystem::current_path().string() + "/../test_files/";
-
-        CefWindowInfo window_info;
-        //window_info.runtime_style = CEF_RUNTIME_STYLE_ALLOY;
-        window_info.bounds = CefRect(0, 0, 414, 848);
-        CefString(&window_info.window_name) = "virtual device - " +
-            configs::make + " " + configs::model
-        + " (" + std::to_string(configs::major) + "."
-        + std::to_string(configs::minor) + "."
-        + std::to_string(configs::patch) + ")";
-
-        CefBrowserHost::CreateBrowser(
-            window_info, client, url, browser_settings, nullptr, nullptr);
+        FTM::InitalizationLogic(client, browser_settings);
+        FTM::New("https://google.com");
     }
 
 private:
